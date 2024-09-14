@@ -92,6 +92,14 @@ class MemeGeneratorApp:
         self.generate_button = tk.Button(self.root, text="Generate Meme", command=self.generate_meme)
         self.generate_button.pack(pady=10)
 
+        # Status Message Label
+        self.status_label = tk.Label(self.root, text="")
+        self.status_label.pack(pady=5)
+
+        # Save Meme Button
+        self.save_button = tk.Button(self.root, text="Save Meme", command=self.save_meme, state=tk.DISABLED)
+        self.save_button.pack(pady=5)
+
     def load_gallery(self):
         for idx, img_path in enumerate(self.template_images):
             img = Image.open(img_path)
@@ -109,7 +117,7 @@ class MemeGeneratorApp:
     def display_template(self):
         if self.selected_template:
             self.template_image = Image.open(self.selected_template)
-            # Maintain aspect ratio with height locked to 500 pixels
+            # Maintain aspect ratio with height locked to 400 pixels
             width, height = self.template_image.size
             new_height = 400
             new_width = int(width * (new_height / height))
@@ -139,6 +147,8 @@ class MemeGeneratorApp:
 
         # Disable the generate button to prevent multiple clicks
         self.generate_button.config(state=tk.DISABLED)
+        self.save_button.config(state=tk.DISABLED)
+        self.status_label.config(text="Processing face swap, please wait...")
         self.root.update_idletasks()
 
         try:
@@ -148,6 +158,7 @@ class MemeGeneratorApp:
             if swapped_image is None:
                 messagebox.showerror("Face Swap Failed", "Face swapping failed.")
                 self.generate_button.config(state=tk.NORMAL)
+                self.status_label.config(text="")
                 return
 
             top_text = self.top_text_entry.get().upper()
@@ -160,12 +171,15 @@ class MemeGeneratorApp:
             # Load font
             font = ImageFont.truetype("impact.ttf", 40)
 
-            # Wrap and center text
-            def wrap_text(text, width):
-                return "\n".join(textwrap.wrap(text, width=20))
+            # Adjust wrap width based on image width
+            wrap_width = int(img.width / 20)
 
-            top_text_wrapped = wrap_text(top_text, 20)
-            bottom_text_wrapped = wrap_text(bottom_text, 20)
+            # Wrap and center text
+            def wrap_text(text):
+                return "\n".join(textwrap.wrap(text, width=wrap_width))
+
+            top_text_wrapped = wrap_text(top_text)
+            bottom_text_wrapped = wrap_text(bottom_text)
 
             # Draw top text
             self.draw_centered_text(draw, img.width, img.height, top_text_wrapped, font, position='top')
@@ -178,12 +192,25 @@ class MemeGeneratorApp:
             self.tk_image_with_text = ImageTk.PhotoImage(img)
             self.image_canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image_with_text)
 
-            # Re-enable the generate button
+            # Re-enable buttons
             self.generate_button.config(state=tk.NORMAL)
+            self.save_button.config(state=tk.NORMAL)
+            self.status_label.config(text="")
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
             self.generate_button.config(state=tk.NORMAL)
+            self.status_label.config(text="")
+
+    def save_meme(self):
+        if hasattr(self, 'image_with_text'):
+            file_path = filedialog.asksaveasfilename(defaultextension=".png",
+                                                     filetypes=[("PNG files", "*.png"), ("All files", "*.*")])
+            if file_path:
+                self.image_with_text.save(file_path)
+                messagebox.showinfo("Meme Saved", "Your meme has been saved successfully.")
+        else:
+            messagebox.showwarning("No Meme", "There is no meme to save.")
 
     def face_swap(self):
         # Upload images to ImgBB to get URLs
@@ -270,17 +297,16 @@ class MemeGeneratorApp:
 
         # Polling the API until the result is ready
         for _ in range(10):
-            time.sleep(5) 
+            time.sleep(5)
             response = requests.post(url, headers=headers, data=data)
             if response.status_code == 200:
                 result = response.json()
-                print(result)
                 status = result.get("image_process_response", {}).get("status")
                 if status == "OK":
                     result_url = result.get("image_process_response", {}).get("result_url")
                     return result_url
                 elif status == "InProgress":
-                    time.sleep(20)  # Wait before retrying
+                    time.sleep(5)  # Wait before retrying
                 else:
                     messagebox.showerror("Face Swap Failed", f"Status: {status}")
                     return None
@@ -291,20 +317,22 @@ class MemeGeneratorApp:
         return None
 
     def draw_centered_text(self, draw, img_width, img_height, text, font, position='top'):
-        # Calculate text size
+        # Calculate line height using textbbox
+        bbox = draw.textbbox((0, 0), 'A', font=font)
+        line_height = bbox[3] - bbox[1]
         lines = text.split('\n')
-        line_height = font.getsize('A')[1]
         total_text_height = line_height * len(lines)
 
         if position == 'top':
             y_text = 10
         elif position == 'bottom':
-            y_text = img_height - total_text_height - 10
+            y_text = img_height - total_text_height - 40
         else:
             y_text = (img_height - total_text_height) / 2
 
         for line in lines:
-            text_width, _ = draw.textsize(line, font=font)
+            bbox = draw.textbbox((0, 0), line, font=font)
+            text_width = bbox[2] - bbox[0]
             x_text = (img_width - text_width) / 2
             draw.text((x_text, y_text), line, font=font, fill="white", stroke_width=2, stroke_fill="black")
             y_text += line_height
