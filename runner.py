@@ -54,23 +54,27 @@ class MemeGeneratorApp:
         
         # Load the image again
         img = Image.open(self.img_path)
-        img = img.resize((500, 500), Image.ANTIALIAS)
+        img = self.image.resize((500, 500), Image.Resampling.LANCZOS)
         draw = ImageDraw.Draw(img)
         
         # Load a font (Make sure you have a .ttf file in the same folder or use any other font path)
-        font = ImageFont.truetype("arial.ttf", 40)
+        font = ImageFont.truetype("impact.ttf", 40)
         
         # Add text at the top
         draw.text((10, 10), top_text, font=font, fill="white", stroke_width=2, stroke_fill="black")
         
-        # Add text at the bottom
-        text_width, text_height = draw.textsize(bottom_text, font=font)
+        # Add text at the bottom using textbbox for measuring text size
+        bbox = draw.textbbox((0, 0), bottom_text, font=font)
+        text_width, text_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+        # Draw the bottom text aligned at the bottom of the image
         draw.text((10, img.height - text_height - 10), bottom_text, font=font, fill="white", stroke_width=2, stroke_fill="black")
         
         # Show updated image with text
         self.image_with_text = img
         self.tk_image_with_text = ImageTk.PhotoImage(img)
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image_with_text)
+
 
 # Run the application
 if __name__ == "__main__":
