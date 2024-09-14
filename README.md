@@ -1,6 +1,8 @@
 # MemeGineer: Meme Generator with Deepfake Face Swapping
 
-![Basic use case](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExczR3b3Y3ZHdjbTVyb2lsYXkxaHV6d2UxMmlsam1wd3c0Y3hiN2F2ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JC5Ug9Zl02Kj6xunis/giphy.gif)
+## Video demo
+
+<img src="https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExczR3b3Y3ZHdjbTVyb2lsYXkxaHV6d2UxMmlsam1wd3c0Y3hiN2F2ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JC5Ug9Zl02Kj6xunis/giphy.gif" alt="Basic use case">
 
 ## Overview
 
