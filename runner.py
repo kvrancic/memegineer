@@ -1,4 +1,4 @@
-import tkinter as tk
+import customtkinter as CTk
 from dotenv import load_dotenv
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk, ImageDraw, ImageFont
@@ -11,11 +11,11 @@ import textwrap
 
 load_dotenv()
 
-
 class MemeGeneratorApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("MemeMorph: Meme Generator")
+        self.root.title("Memgineer: Meme Generator")
+        self.root.geometry("800x600")
 
         # Initialize variables
         self.face_img_path = None
@@ -42,70 +42,57 @@ class MemeGeneratorApp:
 
     def create_widgets(self):
         # Face Image Upload
-        self.face_upload_button = tk.Button(self.root, text="Upload Face Image", command=self.upload_face_image)
+        self.face_upload_button = CTk.CTkButton(self.root, text="Upload Face Image", command=self.upload_face_image)
         self.face_upload_button.pack(pady=5)
 
+        # Container frame for face image and preview text
+        self.face_preview_frame = CTk.CTkFrame(self.root)
+        self.face_preview_frame.pack(pady=5)
+
         # Face Image Preview
-        self.face_preview_label = tk.Label(self.root)
+        self.face_preview_label = CTk.CTkLabel(self.face_preview_frame, text="Face Image", anchor="s")
         self.face_preview_label.pack(pady=5)
 
         # Meme Template Gallery
-        self.gallery_frame = tk.Frame(self.root)
-        self.gallery_frame.pack(pady=5)
-
-        self.canvas = tk.Canvas(self.gallery_frame, width=500, height=120)
-        self.scrollbar = tk.Scrollbar(self.gallery_frame, orient=tk.HORIZONTAL, command=self.canvas.xview)
-        self.canvas.configure(xscrollcommand=self.scrollbar.set)
-
-        self.scrollable_frame = tk.Frame(self.canvas)
-
-        self.scrollable_frame.bind(
-            "<Configure>",
-            lambda e: self.canvas.configure(
-                scrollregion=self.canvas.bbox("all")
-            )
-        )
-
-        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        self.canvas.pack(side="top", fill="both", expand=True)
-        self.scrollbar.pack(side="bottom", fill="x")
+        self.gallery_frame = CTk.CTkScrollableFrame(self.root, width=200, height=200, orientation="horizontal")
+        self.gallery_frame.pack(pady=5, fill="both", expand=True)
 
         # Load templates into gallery
         self.load_gallery()
 
         # Canvas to show selected template and result
-        self.image_canvas = tk.Canvas(self.root, bg="gray")
-        self.image_canvas.pack()
+        self.image_canvas = CTk.CTkCanvas(self.root, bg="gray")
+        self.image_canvas.pack(fill="both", expand=True)
 
         # Text input fields
-        self.top_text_label = tk.Label(self.root, text="Top Text")
+        self.top_text_label = CTk.CTkLabel(self.root, text="Top Text")
         self.top_text_label.pack()
-        self.top_text_entry = tk.Entry(self.root, width=60)
+        self.top_text_entry = CTk.CTkEntry(self.root, width=60)
         self.top_text_entry.pack()
 
-        self.bottom_text_label = tk.Label(self.root, text="Bottom Text")
+        self.bottom_text_label = CTk.CTkLabel(self.root, text="Bottom Text")
         self.bottom_text_label.pack()
-        self.bottom_text_entry = tk.Entry(self.root, width=60)
+        self.bottom_text_entry = CTk.CTkEntry(self.root, width=60)
         self.bottom_text_entry.pack()
 
         # Generate meme button
-        self.generate_button = tk.Button(self.root, text="Generate Meme", command=self.generate_meme)
+        self.generate_button = CTk.CTkButton(self.root, text="Generate Meme", command=self.generate_meme)
         self.generate_button.pack(pady=10)
 
         # Status Message Label
-        self.status_label = tk.Label(self.root, text="")
+        self.status_label = CTk.CTkLabel(self.root, text="")
         self.status_label.pack(pady=5)
 
         # Save Meme Button
-        self.save_button = tk.Button(self.root, text="Save Meme", command=self.save_meme, state=tk.DISABLED)
+        self.save_button = CTk.CTkButton(self.root, text="Save Meme", command=self.save_meme, state="disabled")
         self.save_button.pack(pady=5)
 
     def load_gallery(self):
         for idx, img_path in enumerate(self.template_images):
             img = Image.open(img_path)
-            img.thumbnail((100, 100))
+            img.thumbnail((300, 300))
             tk_img = ImageTk.PhotoImage(img)
-            label = tk.Label(self.scrollable_frame, image=tk_img)
+            label = CTk.CTkLabel(self.gallery_frame, image=tk_img)
             label.image = tk_img  # Keep a reference
             label.grid(row=0, column=idx, padx=5)
             label.bind("<Button-1>", lambda e, idx=idx: self.select_template(idx))
@@ -123,18 +110,28 @@ class MemeGeneratorApp:
             new_width = int(width * (new_height / height))
             self.template_image = self.template_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.tk_template_image = ImageTk.PhotoImage(self.template_image)
-            self.image_canvas.config(width=new_width, height=new_height)
-            self.image_canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_template_image)
+            self.image_canvas.configure(width=new_width, height=new_height)
+            self.image_canvas.create_image(0, 0, anchor="nw", image=self.tk_template_image)
 
     def upload_face_image(self):
+        # Open file dialog to select an image
         self.face_img_path = filedialog.askopenfilename()
+        
         if self.face_img_path:
+            # Show a message box to indicate success
             messagebox.showinfo("Face Image Selected", "Face image selected successfully.")
-            # Display the face image preview
+            
+            # Open and preview the face image
             face_image = Image.open(self.face_img_path)
-            face_image.thumbnail((100, 100))
+            face_image.thumbnail((300, 300))  # Resize the image
+            
+            # Convert the image for use in customtkinter
             self.tk_face_image = ImageTk.PhotoImage(face_image)
-            self.face_preview_label.config(image=self.tk_face_image)
+            
+            # Update the face preview label
+            self.face_preview_label.configure(image=self.tk_face_image)
+            self.face_preview_label.image = self.tk_face_image  # Keep a reference to avoid garbage collection
+
 
     def generate_meme(self):
         if not self.selected_template:
@@ -146,8 +143,8 @@ class MemeGeneratorApp:
             return
 
         # Disable the generate button to prevent multiple clicks
-        self.generate_button.config(state=tk.DISABLED)
-        self.save_button.config(state=tk.DISABLED)
+        self.generate_button.config(state="disabled")
+        self.save_button.config(state="disabled")
         self.status_label.config(text="Processing face swap, please wait...")
         self.root.update_idletasks()
 
@@ -157,7 +154,7 @@ class MemeGeneratorApp:
 
             if swapped_image is None:
                 messagebox.showerror("Face Swap Failed", "Face swapping failed.")
-                self.generate_button.config(state=tk.NORMAL)
+                self.generate_button.config(state="normal")
                 self.status_label.config(text="")
                 return
 
@@ -190,16 +187,16 @@ class MemeGeneratorApp:
             # Show updated image with text
             self.image_with_text = img
             self.tk_image_with_text = ImageTk.PhotoImage(img)
-            self.image_canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_image_with_text)
+            self.image_canvas.create_image(0, 0, anchor="nw", image=self.tk_image_with_text)
 
             # Re-enable buttons
-            self.generate_button.config(state=tk.NORMAL)
-            self.save_button.config(state=tk.NORMAL)
+            self.generate_button.config(state="normal")
+            self.save_button.config(state="normal")
             self.status_label.config(text="")
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
-            self.generate_button.config(state=tk.NORMAL)
+            self.generate_button.config(state="normal")
             self.status_label.config(text="")
 
     def save_meme(self):
@@ -339,6 +336,6 @@ class MemeGeneratorApp:
 
 # Run the application
 if __name__ == "__main__":
-    root = tk.Tk()
+    root = CTk.CTk()  # Use CTk instead of tk.Tk
     app = MemeGeneratorApp(root)
     root.mainloop()
