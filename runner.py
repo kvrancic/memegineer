@@ -1,6 +1,8 @@
 import tkinter as tk
+import textwrap
 from tkinter import filedialog
 from PIL import Image, ImageTk, ImageDraw, ImageFont
+
 
 class MemeGeneratorApp:
     def __init__(self, root):
@@ -60,15 +62,24 @@ class MemeGeneratorApp:
         # Load a font (Make sure you have a .ttf file in the same folder or use any other font path)
         font = ImageFont.truetype("impact.ttf", 40)
         
-        # Add text at the top
-        draw.text((10, 10), top_text, font=font, fill="white", stroke_width=2, stroke_fill="black")
+        # Function to wrap text after 60 characters
+        def wrap_text(text, width):
+            return "\n".join(textwrap.wrap(text, width=width))
         
-        # Add text at the bottom using textbbox for measuring text size
-        bbox = draw.textbbox((0, 0), bottom_text, font=font)
-        text_width, text_height = bbox[2] - bbox[0], bbox[3] - bbox[1]
-
-        # Draw the bottom text aligned at the bottom of the image
-        draw.text((10, img.height - text_height - 10), bottom_text, font=font, fill="white", stroke_width=2, stroke_fill="black")
+        # Wrap the top and bottom texts to fit within 60 characters
+        top_text_wrapped = wrap_text(top_text, 60)
+        bottom_text_wrapped = wrap_text(bottom_text, 60)
+        
+        # Draw centered top text
+        top_text_bbox = draw.textbbox((0, 0), top_text_wrapped, font=font)
+        top_text_width = top_text_bbox[2] - top_text_bbox[0]
+        draw.text(((img.width - top_text_width) / 2, 10), top_text_wrapped, font=font, fill="white", stroke_width=2, stroke_fill="black")
+        
+        # Draw centered bottom text
+        bottom_text_bbox = draw.textbbox((0, 0), bottom_text_wrapped, font=font)
+        bottom_text_width = bottom_text_bbox[2] - bottom_text_bbox[0]
+        bottom_text_height = bottom_text_bbox[3] - bottom_text_bbox[1]
+        draw.text(((img.width - bottom_text_width) / 2, img.height - bottom_text_height - 40), bottom_text_wrapped, font=font, fill="white", stroke_width=2, stroke_fill="black")
         
         # Show updated image with text
         self.image_with_text = img
