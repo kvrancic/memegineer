@@ -1,6 +1,6 @@
 import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
 from dotenv import load_dotenv
-from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 import base64
 import os
@@ -15,7 +15,7 @@ load_dotenv()
 class MemeGeneratorApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("MemeMorph: Meme Generator")
+        self.root.title("MemeGineer")
 
         # Initialize variables
         self.face_img_path = None
@@ -41,19 +41,28 @@ class MemeGeneratorApp:
                 self.template_images.append(os.path.join(template_folder, filename))
 
     def create_widgets(self):
+
+        # Face Upload Label
+        self.face_upload_label = tk.Label(self.root, text="Upload a picture for face swapping", fg="grey")
+        self.face_upload_label.pack()
+
         # Face Image Upload
         self.face_upload_button = tk.Button(self.root, text="Upload Face Image", command=self.upload_face_image)
-        self.face_upload_button.pack(pady=5)
+        self.face_upload_button.pack(pady=2)
 
         # Face Image Preview
         self.face_preview_label = tk.Label(self.root)
-        self.face_preview_label.pack(pady=5)
+        self.face_preview_label.pack(pady=2)
+
+        # Meme Template Gallery Label
+        self.gallery_label = tk.Label(self.root, text="Template Gallery", fg="grey")
+        self.gallery_label.pack()
 
         # Meme Template Gallery
         self.gallery_frame = tk.Frame(self.root)
-        self.gallery_frame.pack(pady=5)
+        self.gallery_frame.pack(pady=2)
 
-        self.canvas = tk.Canvas(self.gallery_frame, width=500, height=120)
+        self.canvas = tk.Canvas(self.gallery_frame, width=500, height=120, highlightthickness=0)
         self.scrollbar = tk.Scrollbar(self.gallery_frame, orient=tk.HORIZONTAL, command=self.canvas.xview)
         self.canvas.configure(xscrollcommand=self.scrollbar.set)
 
@@ -74,8 +83,8 @@ class MemeGeneratorApp:
         self.load_gallery()
 
         # Canvas to show selected template and result
-        self.image_canvas = tk.Canvas(self.root, bg="gray")
-        self.image_canvas.pack()
+        self.image_canvas = tk.Canvas(self.root, bg="gray", highlightthickness=0)
+        self.image_canvas.pack(pady=10)
 
         # Text input fields
         self.top_text_label = tk.Label(self.root, text="Top Text")
@@ -88,24 +97,31 @@ class MemeGeneratorApp:
         self.bottom_text_entry = tk.Entry(self.root, width=60)
         self.bottom_text_entry.pack()
 
+        # Buttons Frame
+        self.buttons_frame = tk.Frame(self.root)
+        self.buttons_frame.pack(pady=10)
+
         # Generate meme button
-        self.generate_button = tk.Button(self.root, text="Generate Meme", command=self.generate_meme)
-        self.generate_button.pack(pady=10)
+        self.generate_button = tk.Button(self.buttons_frame, text="Generate Meme", command=self.generate_meme)
+        self.generate_button.pack(side=tk.LEFT, padx=5)
+
+        # Save Meme Button
+        self.save_button = tk.Button(self.buttons_frame, text="Save Meme", command=self.save_meme, state=tk.DISABLED)
+        self.save_button.pack(side=tk.LEFT, padx=5)
 
         # Status Message Label
         self.status_label = tk.Label(self.root, text="")
         self.status_label.pack(pady=5)
 
-        # Save Meme Button
-        self.save_button = tk.Button(self.root, text="Save Meme", command=self.save_meme, state=tk.DISABLED)
-        self.save_button.pack(pady=5)
+        # Progress Bar (Spinner)
+        self.progress = ttk.Progressbar(self.root, orient=tk.HORIZONTAL, mode='indeterminate')
 
     def load_gallery(self):
         for idx, img_path in enumerate(self.template_images):
             img = Image.open(img_path)
             img.thumbnail((100, 100))
             tk_img = ImageTk.PhotoImage(img)
-            label = tk.Label(self.scrollable_frame, image=tk_img)
+            label = tk.Label(self.scrollable_frame, image=tk_img, cursor="hand2")
             label.image = tk_img  # Keep a reference
             label.grid(row=0, column=idx, padx=5)
             label.bind("<Button-1>", lambda e, idx=idx: self.select_template(idx))
@@ -117,9 +133,9 @@ class MemeGeneratorApp:
     def display_template(self):
         if self.selected_template:
             self.template_image = Image.open(self.selected_template)
-            # Maintain aspect ratio with height locked to 400 pixels
+            # Maintain aspect ratio with height locked to 350 pixels
             width, height = self.template_image.size
-            new_height = 400
+            new_height = 350
             new_width = int(width * (new_height / height))
             self.template_image = self.template_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.tk_template_image = ImageTk.PhotoImage(self.template_image)
@@ -129,12 +145,12 @@ class MemeGeneratorApp:
     def upload_face_image(self):
         self.face_img_path = filedialog.askopenfilename()
         if self.face_img_path:
-            messagebox.showinfo("Face Image Selected", "Face image selected successfully.")
             # Display the face image preview
             face_image = Image.open(self.face_img_path)
             face_image.thumbnail((100, 100))
             self.tk_face_image = ImageTk.PhotoImage(face_image)
             self.face_preview_label.config(image=self.tk_face_image)
+            messagebox.showinfo("Face Image Selected", "Face image selected successfully.")
 
     def generate_meme(self):
         if not self.selected_template:
@@ -149,6 +165,8 @@ class MemeGeneratorApp:
         self.generate_button.config(state=tk.DISABLED)
         self.save_button.config(state=tk.DISABLED)
         self.status_label.config(text="Processing face swap, please wait...")
+        self.progress.pack(pady=5)
+        self.progress.start()
         self.root.update_idletasks()
 
         try:
@@ -158,6 +176,8 @@ class MemeGeneratorApp:
             if swapped_image is None:
                 messagebox.showerror("Face Swap Failed", "Face swapping failed.")
                 self.generate_button.config(state=tk.NORMAL)
+                self.progress.stop()
+                self.progress.pack_forget()
                 self.status_label.config(text="")
                 return
 
@@ -172,7 +192,7 @@ class MemeGeneratorApp:
             font = ImageFont.truetype("impact.ttf", 40)
 
             # Adjust wrap width based on image width
-            wrap_width = int(img.width / 20)
+            wrap_width = int(img.width / 15)
 
             # Wrap and center text
             def wrap_text(text):
@@ -195,11 +215,15 @@ class MemeGeneratorApp:
             # Re-enable buttons
             self.generate_button.config(state=tk.NORMAL)
             self.save_button.config(state=tk.NORMAL)
-            self.status_label.config(text="")
+            self.progress.stop()
+            self.progress.pack_forget()
+            self.status_label.config(text="Meme generated successfully!")
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
             self.generate_button.config(state=tk.NORMAL)
+            self.progress.stop()
+            self.progress.pack_forget()
             self.status_label.config(text="")
 
     def save_meme(self):
@@ -231,7 +255,7 @@ class MemeGeneratorApp:
         swapped_image = Image.open(io.BytesIO(response.content))
         # Resize maintaining aspect ratio
         width, height = swapped_image.size
-        new_height = 400
+        new_height = 350
         new_width = int(width * (new_height / height))
         swapped_image = swapped_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
         self.image_canvas.config(width=new_width, height=new_height)
@@ -306,6 +330,8 @@ class MemeGeneratorApp:
                     result_url = result.get("image_process_response", {}).get("result_url")
                     return result_url
                 elif status == "InProgress":
+                    self.status_label.config(text="Face swap in progress...")
+                    self.root.update_idletasks()
                     time.sleep(5)  # Wait before retrying
                 else:
                     messagebox.showerror("Face Swap Failed", f"Status: {status}")
