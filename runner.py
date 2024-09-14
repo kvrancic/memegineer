@@ -1,13 +1,15 @@
 import tkinter as tk
+from dotenv import load_dotenv
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk, ImageDraw, ImageFont
+import base64
 import os
 import requests
 import io
 import time
 import textwrap
 
-
+load_dotenv()
 
 
 class MemeGeneratorApp:
@@ -43,6 +45,10 @@ class MemeGeneratorApp:
         self.face_upload_button = tk.Button(self.root, text="Upload Face Image", command=self.upload_face_image)
         self.face_upload_button.pack(pady=5)
 
+        # Face Image Preview
+        self.face_preview_label = tk.Label(self.root)
+        self.face_preview_label.pack(pady=5)
+
         # Meme Template Gallery
         self.gallery_frame = tk.Frame(self.root)
         self.gallery_frame.pack(pady=5)
@@ -68,7 +74,7 @@ class MemeGeneratorApp:
         self.load_gallery()
 
         # Canvas to show selected template and result
-        self.image_canvas = tk.Canvas(self.root, width=500, height=500, bg="gray")
+        self.image_canvas = tk.Canvas(self.root, bg="gray")
         self.image_canvas.pack()
 
         # Text input fields
@@ -103,14 +109,24 @@ class MemeGeneratorApp:
     def display_template(self):
         if self.selected_template:
             self.template_image = Image.open(self.selected_template)
-            self.template_image = self.template_image.resize((500, 500), Image.Resampling.LANCZOS)
+            # Maintain aspect ratio with height locked to 500 pixels
+            width, height = self.template_image.size
+            new_height = 400
+            new_width = int(width * (new_height / height))
+            self.template_image = self.template_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
             self.tk_template_image = ImageTk.PhotoImage(self.template_image)
+            self.image_canvas.config(width=new_width, height=new_height)
             self.image_canvas.create_image(0, 0, anchor=tk.NW, image=self.tk_template_image)
 
     def upload_face_image(self):
         self.face_img_path = filedialog.askopenfilename()
         if self.face_img_path:
             messagebox.showinfo("Face Image Selected", "Face image selected successfully.")
+            # Display the face image preview
+            face_image = Image.open(self.face_img_path)
+            face_image.thumbnail((100, 100))
+            self.tk_face_image = ImageTk.PhotoImage(face_image)
+            self.face_preview_label.config(image=self.tk_face_image)
 
     def generate_meme(self):
         if not self.selected_template:
@@ -186,7 +202,12 @@ class MemeGeneratorApp:
         # Download the swapped image
         response = requests.get(swap_result_url)
         swapped_image = Image.open(io.BytesIO(response.content))
-        swapped_image = swapped_image.resize((500, 500), Image.Resampling.LANCZOS)
+        # Resize maintaining aspect ratio
+        width, height = swapped_image.size
+        new_height = 400
+        new_width = int(width * (new_height / height))
+        swapped_image = swapped_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        self.image_canvas.config(width=new_width, height=new_height)
         return swapped_image
 
     def upload_image_to_imgbb(self, image_path):
@@ -194,7 +215,7 @@ class MemeGeneratorApp:
         with open(image_path, "rb") as file:
             payload = {
                 "key": self.imgbb_api_key,
-                "image": file.read(),
+                "image": base64.b64encode(file.read()),
             }
         response = requests.post(url, data=payload)
         if response.status_code == 200:
@@ -222,7 +243,8 @@ class MemeGeneratorApp:
         response = requests.post(url, headers=headers, data=data)
         if response.status_code == 200:
             result = response.json()
-            request_id = result.get("request_id")
+            # Access the nested 'request_id'
+            request_id = result.get("image_process_response", {}).get("request_id")
             if request_id:
                 # Poll for result
                 return self.retrieve_face_swap_result(request_id)
@@ -248,15 +270,17 @@ class MemeGeneratorApp:
 
         # Polling the API until the result is ready
         for _ in range(10):
+            time.sleep(5) 
             response = requests.post(url, headers=headers, data=data)
             if response.status_code == 200:
                 result = response.json()
-                status = result.get("status")
-                if status == "succeeded":
-                    result_url = result.get("result_url")
+                print(result)
+                status = result.get("image_process_response", {}).get("status")
+                if status == "OK":
+                    result_url = result.get("image_process_response", {}).get("result_url")
                     return result_url
-                elif status == "pending":
-                    time.sleep(2)  # Wait before retrying
+                elif status == "InProgress":
+                    time.sleep(20)  # Wait before retrying
                 else:
                     messagebox.showerror("Face Swap Failed", f"Status: {status}")
                     return None
